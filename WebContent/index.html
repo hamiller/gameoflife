@@ -1,0 +1,143 @@
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html40/strict.dtd">
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>Game of Life</title>
+	
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+</head>
+
+<body id="main_body">
+	<h1>Spiel des Lebens</h1>
+
+	<div id="control">
+    	<a href="javascript:webSocketStart()">Starte Spiel</a>
+    	<a href="javascript:webSocketStop()">Stoppe Spiel</a>
+    	
+    	<form oninput="groesse.value=size.value">
+			Größe: <output name="groesse">20</output>
+			<input type="range" id="size" name="size" min="5" max="20" value="20">
+		</form>
+		
+    	<form oninput="breite.value=width.value">
+			Breite: <output name="breite">10</output>
+			<input type="range" id="width" name="width" min="10" max="200" value="10">
+		</form>
+		
+
+		<form oninput="hoehe.value=heigth.value">
+			Höhe: <output name="hoehe">10</output>
+			<input type="range" id="heigth" name="heigth" min="10" max="100" value="10">
+		</form>
+		
+		<form oninput="geschwindigkeit.value=speed.value">
+			Geschwindigkeit (Züge / Sek): <output name="geschwindigkeit">1</output>
+			<input type="range" id="speed" name="speed" min="1" max="10" value="1">
+		</form>
+    </div>
+    
+    <div id="game">
+    	<canvas id="myCanvas" width="1200" height="800"></canvas>
+    </div>
+</body>
+
+
+
+<script type="text/javascript">
+		var size = 20;
+		var connection = new WebSocket('ws://localhost:8080/GameOfLife/gof');
+		
+		var rangeWidth = document.getElementById("width");
+		var rangeHeight = document.getElementById("heigth");
+		var rangeSpeed = document.getElementById("speed");
+		var rangeSize = document.getElementById("size");
+		
+		
+		
+		webSocketStart = function () {
+			var speed = document.getElementById('speed').value;
+			connection.send( JSON.stringify({action: "start", speed: speed}) );
+	
+			console.log("Sended to WebSocket");
+		}
+	
+		webSocketStop = function () {
+			connection.send( JSON.stringify({action: "stop"}) );
+		}
+	
+		connection.onopen = function() {
+			console.log("WebSocket opened");
+		}
+	
+		connection.onmessage = function(message) {
+			//console.log("Client received '" + message.data + "'");
+			var object = JSON.parse(message.data);
+			
+			clearCanvas();
+			var canvas = document.getElementById('myCanvas');
+    		var context = canvas.getContext('2d');
+    	
+			
+			$.each(object, function (y, row) {
+                $.each(row, function (x, cell) { 
+                    printElement(context, cell.x, cell.y, cell.alive);
+                });
+            });
+			
+		}
+	
+		connection.onclose = function(message) {
+			console.log("Client closing connection...");
+		}
+		
+		printElement = function(context, x, y, alive) {
+			context.beginPath();
+			context.rect(x*size, y*size, size, size);
+		    context.lineWidth = 2;
+		    context.strokeStyle = 'black';
+		    
+		    if (alive) {
+		    	context.fillStyle = 'black';
+		    	context.fill();
+		    }
+		    context.stroke();
+		}
+		
+		clearCanvas = function() {
+			var canvas = document.getElementById('myCanvas');
+		    var context = canvas.getContext('2d');
+		    context.clearRect(0, 0, canvas.width, canvas.height);
+		}
+		
+		
+		
+		rangeWidth.addEventListener('mouseup', function() {
+			sendNewSize();
+		});
+		
+		rangeHeight.addEventListener('mouseup', function() {
+			sendNewSize();
+		});
+		
+		rangeSpeed.addEventListener('mouseup', function() {
+			webSocketStart();
+		});
+		
+		rangeSize.addEventListener('mouseup', function() {
+			size = document.getElementById('size').value;
+		});
+		
+		sendNewSize = function() {
+			var x = document.getElementById('width').value;
+			var y = document.getElementById('heigth').value;
+			console.log(x + ", " +  y);	
+			
+			connection.send( JSON.stringify({action: "initialize", width: x, height: y}) );
+
+		}
+		
+		
+	</script>
+</html>
